@@ -1,0 +1,35 @@
+---
+# Federated setup
+num_rounds: 5
+num_total_clients: 10
+num_clients_per_round: 2
+num_evaluate_clients_per_round: 2
+
+# If clients should be sampled with replacement
+# when the dataset is not large enough
+enable_resampling: false
+
+# Client resources
+cpus_per_client: 2
+gpus_per_client: 0
+
+# Seed for client selection
+seed: 1337
+
+# Settings for loading the initial parameters 
+# used by the server
+
+# If the server should try to load saved parameters and rng, if it fails it will do the normal procedure of generating a random net
+# Leave on as true in case you need to enable checkpoints later on
+load_saved_state: true
+# The round from which to load the parameters
+# if null it will load the most recent round
+server_round: null
+
+# Path to the folder where the parameters are located,  leave null if you want to use automatic detection from the results folder
+parameters_folder: null
+
+# Path to the folder where the random number generators are located, leave null if you want to use automatic detection from the results folder
+rng_folder: null
+
+history_folder: null
