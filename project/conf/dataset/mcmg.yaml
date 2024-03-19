@@ -1,0 +1,18 @@
+---
+# Where to download the raw mcmg data
+mcmg_dir: ./data/mcmg/data
+
+# Top level data dir
+data_dir: ./data
+
+# CAL data dir
+cal_dir: ./data/CAL
+
+# NY data dir
+ny_dir: ./data/NY
+
+# PHO data dir
+pho_dir: ./data/PHO
+
+# NY data dir
+sin_dir: ./data/SIN
