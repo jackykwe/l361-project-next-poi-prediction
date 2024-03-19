@@ -11,6 +11,7 @@ import patoolib
 import requests
 from mcmg_utils import *
 import pickle
+import os
 
 
 def _download_data(mcmg_dir: Path):
