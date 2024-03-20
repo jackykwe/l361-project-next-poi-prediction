@@ -73,6 +73,12 @@ def train(  # pylint: disable=too-many-arguments
         the loss, and the accuracy of the input model on the given data.
     """
 
+    if "client_dropout" in _config:
+        if _config["client_dropout"] >= _rng_tuple[1].random():
+            return 1, {
+                "train_loss": 0,
+            }
+
     losses = []
     for epoch in range(net.epoch):
         print('epoch: ', epoch)
@@ -140,7 +146,9 @@ def test(
         testloader.POI_test_data.length,
         {
             "POI_HR_1": np.mean(metrics[0] + metrics[18]),
-            "POI_NDCG_1": np.mean(metrics[0] + metrics[18]),
+            "POI_NDCG_1": np.mean(metrics[3] + metrics[21]),
+            "POI_HR_5": np.mean(metrics[1] + metrics[19]),
+            "POI_NDCG_5": np.mean(metrics[4] + metrics[22]),
         },
     )
 

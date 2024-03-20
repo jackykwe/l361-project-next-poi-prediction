@@ -1,5 +1,7 @@
 """MCMG dataset utilities for federated learning."""
 import pickle
+import numpy as np
+from itertools import compress
 
 from project.task.default.dataset import (
     ClientDataloaderConfig as DefaultClientDataloaderConfig,
@@ -70,6 +72,9 @@ def get_dataloader_generators(
 
         with open(f'{data_dir}/{data_name}/test.pkl', "rb") as f:
             full_test = pickle.load(f)
+
+        if _config['filter']:
+            full_train, full_test = filter_data(full_train, full_test)
 
         train_data = increase_data(flatten_data(full_train))
         POI_adj_matrix = get_adj_matrix_InDegree(train_data[0], _config['POI_n_node'])
@@ -219,3 +224,19 @@ class McmgTestDataLoader:
         self.time_test_data = time_test_data
         self.POI_dist_test_data = POI_dist_test_data
         self.regi_dist_test_data = regi_dist_test_data
+
+
+def filter_data(full_train, full_test):
+    client_lens = [len(i) for i in full_train[0]]
+    mean_client_len = np.mean(client_lens)
+
+    filtered_train = list()
+    filtered_test = list()
+
+    mask = client_lens >= mean_client_len
+
+    for i in range(0, len(full_train)):
+        filtered_train.append(list(compress(full_train[i], mask)))
+        filtered_test.append(list(compress(full_test[i], mask)))
+
+    return filtered_train, filtered_test
