@@ -10,13 +10,13 @@ num_evaluate_clients_per_round: 2
 enable_resampling: false
 
 # Client resources
-cpus_per_client: 2
+cpus_per_client: 1
 gpus_per_client: 0
 
 # Seed for client selection
 seed: 1337
 
-# Settings for loading the initial parameters 
+# Settings for loading the initial parameters
 # used by the server
 
 # If the server should try to load saved parameters and rng, if it fails it will do the normal procedure of generating a random net

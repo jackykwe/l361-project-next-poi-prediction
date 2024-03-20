@@ -1,29 +1,18 @@
 ---
-# Where to store data
-dataset_dir: ./data/mnist/data
+# Where to download and store raw data (all four cities will be downloaded)
+raw_dataset_dir: ./data/flashback/raw_data
 
-# Folder of client folders
-# indexed by id, containing train and test
-# data in .pt format
-partition_dir: ./data/mnist/partition
+# Where to save postprocessed raw data to.
+# Directory structure looks like
+#    postprocessed_partitions_root / chosen_city / partition_type / client_x.txt
+# where chosen_city in ("CAL", "NY", "PHO", "SIN")
+#   and partition_type in ("centralised", "fed_natural")
+#
+# Train and test splits are created at runtime, not stored statically
+# to reuse as much of Flashback's code as possible.
+postprocessed_partitions_root: ./data/flashback/partition
 
-# How many clients to create
-num_clients: 10
-
-# How large should the test set of each client
-# be relative to the train set
-val_ratio: 0.1
-
-# Seed for partition generation
-seed: 1337
-
-# If the partition labels 
-# should be independent and identically distributed
-iid: false
-
-# If the partition labels should follow a power law
-# distribution
-power_law: true
-
-# If the partition labels should be balanced
-balance: false
+# Sequence length; k in the Flashback paper
+# This is the maximum length of the input to the model
+# I.e. the maximum number of historical checkins we look at, when we predict the next checkin
+sequence_length: 20
