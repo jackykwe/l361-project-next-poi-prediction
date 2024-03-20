@@ -73,7 +73,6 @@ def train(  # pylint: disable=too-many-arguments
         the loss, and the accuracy of the input model on the given data.
     """
 
-    # Todo maybe for each epoch?
     losses = []
     for epoch in range(net.epoch):
         print('epoch: ', epoch)
@@ -136,7 +135,6 @@ def test(
     """
     metrics = model_test(net.model, testloader)
 
-    # Todo
     return (
         metrics[-1],
         testloader.POI_test_data.length,
