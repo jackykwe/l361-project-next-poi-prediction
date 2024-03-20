@@ -1,0 +1,231 @@
+"""MNIST training and testing functions, local and federated."""
+
+import numpy as np
+from pathlib import Path
+
+import torch
+from flwr.common import NDArrays
+from pydantic import BaseModel
+from torch import nn
+from torch.utils.data import DataLoader
+
+from project.client.client import ClientConfig
+from project.fed.utils.utils import generic_set_parameters
+from project.task.default.train_test import (
+    get_on_evaluate_config_fn as get_default_on_evaluate_config_fn,
+)
+from project.task.default.train_test import (
+    get_on_fit_config_fn as get_default_on_fit_config_fn,
+)
+from project.task.mcmg.dataset import McmgTrainDataLoader, McmgTestDataLoader
+from project.task.mcmg.mcmg_model import model_train, model_test
+from project.types.common import IsolatedRNG, NetGen, FedDataloaderGen, TestFunc, FedEvalFN
+from project.utils.utils import obtain_device
+
+
+class TrainConfig(BaseModel):
+    """Training configuration, allows '.' member access and static checking.
+
+    Guarantees that all necessary components are present, fails early if config is
+    mismatched to client.
+    """
+
+    device: torch.device
+    epochs: int
+    learning_rate: float
+
+    class Config:
+        """Setting to allow any types, including library ones like torch.device."""
+
+        arbitrary_types_allowed = True
+
+
+def train(  # pylint: disable=too-many-arguments
+        net: nn.Module,
+        trainloader: McmgTrainDataLoader,
+        _config: dict,
+        _working_dir: Path,
+        _rng_tuple: IsolatedRNG,
+) -> tuple[int, dict]:
+    """Train the network on the training set.
+
+    Parameters
+    ----------
+    net : nn.Module
+        The neural network to train.
+    trainloader : DataLoader
+        The DataLoader containing the data to train the network on.
+    _config : Dict
+        The configuration for the training.
+        Contains the device, number of epochs and learning rate.
+        Static type checking is done by the TrainConfig class.
+    _working_dir : Path
+        The working directory for the training.
+        Unused.
+    _rng_tuple : IsolatedRNGTuple
+        The random number generator state for the training.
+        Use if you need seeded random behavior
+
+    Returns
+    -------
+    Tuple[int, Dict]
+        The number of samples used for training,
+        the loss, and the accuracy of the input model on the given data.
+    """
+
+    # Todo maybe for each epoch?
+    losses = []
+    for epoch in range(net.epoch):
+        print('epoch: ', epoch)
+
+        loss = model_train(net.model, trainloader)
+        losses.append(loss)
+
+    return trainloader.POI_train_data.length, {
+        "train_loss": losses[-1].item(),
+    }
+
+
+class TestConfig(BaseModel):
+    """Testing configuration, allows '.' member access and static checking.
+
+    Guarantees that all necessary components are present, fails early if config is
+    mismatched to client.
+    """
+
+    device: torch.device
+
+    class Config:
+        """Setting to allow any types, including library ones like torch.device."""
+
+        arbitrary_types_allowed = True
+
+
+def test(
+        net: nn.Module,
+        testloader: McmgTestDataLoader,
+        _config: dict,
+        _working_dir: Path,
+        _rng_tuple: IsolatedRNG,
+) -> tuple[float, int, dict]:
+    """Evaluate the network on the test set.
+
+    Parameters
+    ----------
+    net : nn.Module
+        The neural network to test.
+    testloader : DataLoader
+        The DataLoader containing the data to test the network on.
+    _config : Dict
+        The configuration for the testing.
+        Contains the device.
+        Static type checking is done by the TestConfig class.
+    _working_dir : Path
+        The working directory for the training.
+        Unused.
+    _rng_tuple : IsolatedRNGTuple
+        The random number generator state for the training.
+        Use if you need seeded random behavior
+
+
+    Returns
+    -------
+    Tuple[float, int, float]
+        The loss, number of test samples,
+        and the accuracy of the input model on the given data.
+    """
+    metrics = model_test(net.model, testloader)
+
+    # Todo
+    return (
+        metrics[-1],
+        testloader.POI_test_data.length,
+        {
+            "POI_HR_1": np.mean(metrics[0] + metrics[18]),
+            "POI_NDCG_1": np.mean(metrics[0] + metrics[18]),
+        },
+    )
+
+
+def get_fed_eval_fn(
+        net_generator: NetGen,
+        fed_dataloader_generator: FedDataloaderGen,
+        test_func: TestFunc,
+        _config: dict,
+        working_dir: Path,
+        rng_tuple: IsolatedRNG,
+) -> FedEvalFN | None:
+    """Get the federated evaluation function.
+
+    Parameters
+    ----------
+    net_generator : NetGenerator
+        The function to generate the network.
+    fed_dataloader_generator : DataLoader
+        The DataLoader containing the data to test the network on.
+    test_func : TestFunc
+        The function to evaluate the network.
+    _config : Dict
+        The configuration for the testing.
+        Contains the device.
+        Static type checking is done by the TestConfig class.
+    working_dir : Path
+        The working directory for the training.
+    _rng_tuple : IsolatedRNGTuple
+        The random number generator state for the training.
+        Use if you need seeded random behavior
+
+    Returns
+    -------
+    Optional[FedEvalFN]
+        The evaluation function for the server
+        if the testloader is not empty, else None.
+    """
+    config: ClientConfig = ClientConfig(**_config)
+    del _config
+
+    testloader = fed_dataloader_generator(
+        True,
+        config.dataloader_config,
+        rng_tuple,
+    )
+
+    def fed_eval_fn(
+            _server_round: int,
+            parameters: NDArrays,
+            fake_config: dict,
+    ) -> tuple[float, dict] | None:
+        """Evaluate the model on the given data.
+
+        Parameters
+        ----------
+        server_round : int
+            The current server round.
+        parameters : NDArrays
+            The parameters of the model to evaluate.
+        _config : Dict
+            The configuration for the evaluation.
+
+        Returns
+        -------
+        Optional[Tuple[float, Dict]]
+            The loss and the accuracy of the input model on the given data.
+        """
+        net = net_generator(config.net_config, rng_tuple)
+        generic_set_parameters(net, parameters)
+        config.run_config["device"] = obtain_device()
+
+        loss, _num_samples, metrics = test_func(
+            net,
+            testloader,
+            config.run_config,
+            working_dir,
+            rng_tuple,
+        )
+        return loss, metrics
+
+    return fed_eval_fn
+
+
+get_on_fit_config_fn = get_default_on_fit_config_fn
+get_on_evaluate_config_fn = get_default_on_evaluate_config_fn

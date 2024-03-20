@@ -1,0 +1,131 @@
+---
+# These strings are constants used by the dispatcher to select functionality at runtime
+# Please implement all behaviour in the task-level dispatch.py file and then add the dispatch functions to the top-level dispatch.py
+# Choose the model and dataset
+model_and_data: CAL
+# Choose the train, test and server fed_eval functions
+train_structure: CAL
+
+# Client fit config
+fit_config:
+  # Parameters taken from original mcmg impl
+  net_config:
+    batch_size: 512
+    hidden_size: 150
+    epoch: 100
+    lr: 0.004
+    l2: 0.0001
+    step: 1
+    patience: 10
+    topk: 10
+    n_head: 1
+    k_blocks: 1
+    GCN_drop_out: 0.5
+    SA_drop_out: 0.5
+    tune_epochs: 30
+    POI_n_node: 580
+    cate_n_node: 150
+    regi_n_node: 11
+    time_n_node: 25
+    POI_dist_n_node: 31
+    regi_dist_n_node: 31
+    len_max: 16
+
+  # Default dataloader is empty, added just for completeness
+  dataloader_config:
+    batch_size: 1
+    POI_n_node: 580
+
+  # Default train does nothing
+  run_config: { }
+  extra: { }
+
+# Client eval config
+eval_config:
+  net_config:
+    batch_size: 512
+    hidden_size: 150
+    epoch: 100
+    lr: 0.004
+    l2: 0.0001
+    step: 1
+    patience: 10
+    topk: 10
+    n_head: 1
+    k_blocks: 1
+    GCN_drop_out: 0.5
+    SA_drop_out: 0.5
+    tune_epochs: 30
+    POI_n_node: 580
+    cate_n_node: 150
+    regi_n_node: 11
+    time_n_node: 25
+    POI_dist_n_node: 31
+    regi_dist_n_node: 31
+    len_max: 16
+  # The batch size for testing can be as high as the GPU supports
+  dataloader_config:
+    batch_size: 1
+    POI_n_node: 580
+  run_config: { }
+  extra: { }
+
+# Configuration for the federated testing function
+# Follows the same conventions as the client config
+fed_test_config:
+  net_config:
+    batch_size: 512
+    hidden_size: 150
+    epoch: 100
+    lr: 0.004
+    l2: 0.0001
+    step: 1
+    patience: 10
+    topk: 10
+    n_head: 1
+    k_blocks: 1
+    GCN_drop_out: 0.5
+    SA_drop_out: 0.5
+    tune_epochs: 30
+    POI_n_node: 580
+    cate_n_node: 150
+    regi_n_node: 11
+    time_n_node: 25
+    POI_dist_n_node: 31
+    regi_dist_n_node: 31
+    len_max: 16
+  # Testing batch size can be as high as the GPU supports
+  dataloader_config:
+    batch_size: 1
+    POI_n_node: 580
+  run_config: { }
+  extra: { }
+
+# Configuration instructions for initial parameter
+# generation
+net_config_initial_parameters:
+  batch_size: 512
+  hidden_size: 150
+  epoch: 100
+  lr: 0.004
+  l2: 0.0001
+  step: 1
+  patience: 10
+  topk: 10
+  n_head: 1
+  k_blocks: 1
+  GCN_drop_out: 0.5
+  SA_drop_out: 0.5
+  tune_epochs: 30
+  POI_n_node: 580
+  cate_n_node: 150
+  regi_n_node: 11
+  time_n_node: 25
+  POI_dist_n_node: 31
+  regi_dist_n_node: 31
+  len_max: 16
+
+# The names of metrics you wish to aggregate
+# E.g., train_loss, test_accuracy
+fit_metrics: [ train_loss ]
+evaluate_metrics: [ ]
