@@ -1,4 +1,6 @@
 ---
+#! NB. Everything here concerns downloading and partitioning the four datasets (cities) only.
+#! NB. For selection of dataset (city), modify the yaml under the task folder.
 # Where to download and store raw data (all four cities will be downloaded)
 raw_dataset_dir: ./data/flashback/raw_data
 
@@ -16,3 +18,6 @@ postprocessed_partitions_root: ./data/flashback/partition
 # This is the maximum length of the input to the model
 # I.e. the maximum number of historical checkins we look at, when we predict the next checkin
 sequence_length: 20
+
+# Where all the partitions are stored. Selection of subfolders is done using yaml in task (city and partition_type fields)
+partition_dir: ./data/flashback/partition

@@ -12,14 +12,6 @@ from flwr.common.logger import log
 from omegaconf import DictConfig, OmegaConf
 from tqdm.auto import tqdm
 
-# !This is replaced by `required_minimum_checkins` below
-# MIN_CHECKINS = 101  # from Flashback repository's setting.py; reject users with fewer than this number of checkins
-# With 101 checkins, the first 80 will go to train (which results in length-79 X-y pairs due to the off-by-one alignment,
-#                        i.e. t=0 to t=T-2 used as X, and t=1 to t=T-1 used as the corresponding ys. This shortens the
-#                        sequence from length T to length T-1)
-#                    and the latter 21 will go to test (which results in length-20 X-y pairs, length-20 is the minimum
-#                        for existence of the user in the test set)
-
 
 def _download_data(
     raw_dataset_dir: Path,

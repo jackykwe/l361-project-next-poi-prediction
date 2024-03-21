@@ -21,15 +21,15 @@ in the chain specified by project.dispatch will be used.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from omegaconf import DictConfig
 
 from project.task.default.dispatch import dispatch_config as dispatch_default_config
 from project.task.default.dispatch import init_working_dir as init_working_dir_default
-from project.task.mnist_classification.dataset import get_dataloader_generators
-from project.task.mnist_classification.models import get_logistic_regression, get_net
-from project.task.mnist_classification.train_test import get_fed_eval_fn, test, train
+from project.task.flashback.dataset import get_dataloader_generators
+from project.task.flashback.models import get_net
+from project.task.flashback.train_test import get_fed_eval_fn, test, train
 from project.types.common import DataStructure, TrainStructure
 
 
@@ -67,7 +67,7 @@ def dispatch_train(
     )
 
     # Only consider not None and uppercase matches
-    if train_structure is not None and train_structure.upper() == "MNIST":
+    if train_structure is not None and train_structure.upper() == "FLASHBACK":
         return train, test, get_fed_eval_fn
 
     # Cannot match, send to next dispatch in chain
@@ -112,34 +112,65 @@ def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
         "partition_dir",
         None,
     )
+    city: str | None = (
+        cfg.get("task", {})
+        .get(
+            "fit_config",
+            None,
+        )
+        .get(
+            "dataloader_config",
+            None,
+        )
+        .get("city")
+    )
+    partition_type: str | None = (
+        cfg.get("task", {})
+        .get(
+            "fit_config",
+            None,
+        )
+        .get(
+            "dataloader_config",
+            None,
+        )
+        .get("partition_type")
+    )
 
     # Only consider situations where both are not None
     # otherwise data loading would fail later
-    if client_model_and_data is not None and partition_dir is not None:
+    if all((
+        client_model_and_data is not None,
+        partition_dir is not None,
+        city is not None,
+        partition_type is not None,
+    )):
         # Obtain the dataloader generators
         # for the provided partition dir
         (
             client_dataloader_gen,
             fed_dataloader_gen,
         ) = get_dataloader_generators(
-            Path(partition_dir),
+            Path(cast(str, partition_dir))
+            / cast(str, city)
+            / cast(str, partition_type),
         )
 
         # Case insensitive matches
-        if client_model_and_data.upper() == "MNIST_CNN":
+        if cast(str, client_model_and_data).upper() == "FLASHBACK_MCMG":
             return (
                 get_net,
                 client_dataloader_gen,
                 fed_dataloader_gen,
                 init_working_dir_default,
             )
-        elif client_model_and_data.upper() == "MNIST_LR":
-            return (
-                get_logistic_regression,
-                client_dataloader_gen,
-                fed_dataloader_gen,
-                init_working_dir_default,
-            )
+        # elif client_model_and_data.upper() == "MNIST_LR":
+        #     return (
+        #         get_logistic_regression,
+        #         client_dataloader_gen,
+        #         fed_dataloader_gen,
+        #         init_working_dir_default,
+        #     )
 
     # Cannot match, send to next dispatch in chain
     return None

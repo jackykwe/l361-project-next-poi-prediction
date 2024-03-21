@@ -12,6 +12,9 @@ from omegaconf import DictConfig
 from project.task.default.dispatch import dispatch_config as dispatch_default_config
 from project.task.default.dispatch import dispatch_data as dispatch_default_data
 from project.task.default.dispatch import dispatch_train as dispatch_default_train
+from project.task.flashback.dispatch import dispatch_config as dispatch_flashback_config
+from project.task.flashback.dispatch import dispatch_data as dispatch_flashback_data
+from project.task.flashback.dispatch import dispatch_train as dispatch_flashback_train
 from project.task.mnist_classification.dispatch import (
     dispatch_config as dispatch_mnist_config,
 )
@@ -46,6 +49,7 @@ def dispatch_train(cfg: DictConfig, **kwargs: Any) -> TrainStructure:
     """
     # Create the list of task dispatches to try
     task_train_functions: list[Callable[..., TrainStructure | None]] = [
+        dispatch_flashback_train,
         dispatch_default_train,
         dispatch_mnist_train,
     ]
@@ -83,6 +87,7 @@ def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure:
     """
     # Create the list of task dispatches to try
     task_data_dependent_functions: list[Callable[..., DataStructure | None]] = [
+        dispatch_flashback_data,
         dispatch_mnist_data,
         dispatch_default_data,
     ]
@@ -122,6 +127,7 @@ def dispatch_config(cfg: DictConfig, **kwargs: Any) -> ConfigStructure:
     """
     # Create the list of task dispatches to try
     task_config_functions: list[Callable[..., ConfigStructure | None]] = [
+        dispatch_flashback_config,
         dispatch_mnist_config,
         dispatch_default_config,
     ]
