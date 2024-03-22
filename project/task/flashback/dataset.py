@@ -25,6 +25,7 @@ class ClientDataloaderConfig(BaseModel):
     components are present, fails early if config is mismatched to dataloader.
     """
 
+    loc_count: int
     batch_size: int
     # sequence_length: just here for a secondary check that the dataset_preparation was
     # successful; Flashback was coded like this so I'll respect it
@@ -45,6 +46,7 @@ class FedDataloaderConfig(BaseModel):
     components are present, fails early if config is mismatched to dataloader.
     """
 
+    loc_count: int
     batch_size: int
     # sequence_length: just here for a secondary check that the dataset_preparation was
     # successful; Flashback was coded like this so I'll respect it
@@ -443,7 +445,7 @@ class PoiDataloader:
     Ids for users and locations are recreated and continous from 0.
     """
 
-    def __init__(self, max_users: int = 0, min_checkins: int = 0) -> None:
+    def __init__(self, loc_count, *, max_users: int = 0, min_checkins: int = 0) -> None:
         """max_users limits the amount of users to load.
         min_checkins discards users with less than this amount of checkins.
         """
@@ -453,7 +455,9 @@ class PoiDataloader:
         # * maps from client_x.txt's UserId to an internal venue ID used by PoiDataloader and PoiDataset.
         self.user2id: dict[int, int] = {}
         # * maps from client_x.txt's VenueId to an internal venue ID used by PoiDataloader and PoiDataset.
-        self.poi2id: dict[int, int] = {}
+        # ! This definition prevents remapping across different clients in a federated setting.
+        # ! The preprocessing already made the locations start indexing from 0
+        self.poi2id: dict[int, int] = {i: i for i in range(loc_count)}
 
         self.users: list[int] = []
         self.times: list[list[float]] = []
@@ -489,8 +493,9 @@ class PoiDataloader:
 
     def read(self, file: Path) -> None:
         if not file.is_file():
-            print(
-                f"[Error]: Dataset not available: {file}. Please follow instructions under ./data/README.md"
+            log(
+                logging.ERROR,
+                f"[Error]: Dataset not available: {file}. Please follow instructions under ./data/README.md",
             )
             sys.exit(1)
 
@@ -498,8 +503,11 @@ class PoiDataloader:
         self.read_users(file)
         # collect checkins for all collected users:
         self.read_pois(file)
-        log(logging.DEBUG, f"self.user2id={self.user2id}")  # * DEBUG SET A
-        log(logging.DEBUG, f"self.poi2id={self.poi2id}")
+        # log(logging.DEBUG, f"self.user2id={self.user2id}")  # * DEBUG SET A
+        # log(logging.DEBUG, f"self.poi2id={self.poi2id}")
+        assert all(
+            [k == v for k, v in self.poi2id.items()]
+        ), f"Mapping invalid, results cannot be combined at the federation server: {self.poi2id}"
 
     def read_users(self, file: Path) -> None:
         f = open(file)
@@ -519,7 +527,7 @@ class PoiDataloader:
                     raise Exception(
                         "Pre-processing step did not eliminate user with insufficient checkins. Please run `poetry run python -m project.task.flashback.dataset_preparation` then retry."
                     )
-                #    print('discard user {}: to few checkins ({})'.format(prev_user, visit_cnt))
+                #    log(logging.ERROR, 'discard user {}: to few checkins ({})'.format(prev_user, visit_cnt))
                 prev_user = user
                 visit_cnt = 1
                 if self.max_users > 0 and len(self.user2id) >= self.max_users:
@@ -531,7 +539,7 @@ class PoiDataloader:
             raise Exception(
                 "Pre-processing step did not eliminate user with insufficient checkins. Please run `poetry run python -m project.task.flashback.dataset_preparation` then retry."
             )
-        #    print('discard user {}: to few checkins ({})'.format(prev_user, visit_cnt))
+        #    log(logging.ERROR, 'discard user {}: to few checkins ({})'.format(prev_user, visit_cnt))
 
     def read_pois(self, file: Path) -> None:
         f = open(file)
@@ -608,7 +616,10 @@ def get_dataloader_generators(
     """
 
     def get_client_dataloader(
-        cid: CID, test: bool, _config: dict, rng_tuple: IsolatedRNG
+        cid: CID,
+        test: bool,
+        _config: dict,  # * this is task.fit_config.dataloader_config or task.eval_config.dataloader_config
+        rng_tuple: IsolatedRNG,
     ) -> DataLoader:
         """Return a DataLoader for a client's dataset.
 
@@ -634,7 +645,9 @@ def get_dataloader_generators(
 
         torch_cpu_generator = rng_tuple[3]
 
-        poi_loader = PoiDataloader(min_checkins=5 * config.sequence_length + 1)
+        poi_loader = PoiDataloader(
+            config.loc_count, min_checkins=5 * config.sequence_length + 1
+        )
         log(
             logging.WARNING,
             f"get_client_dataloader() called, and poi_loader is reading from {partition_dir}...",
@@ -646,8 +659,9 @@ def get_dataloader_generators(
             Split.TEST if test else Split.TRAIN,
         )
         assert (
-            config.batch_size < poi_loader.user_count()
-        ), "batch size must be lower than the amount of available users"
+            config.batch_size
+            <= poi_loader.user_count()  # ! Should be ok, changed < to <=
+        ), f"batch size ({config.batch_size}) must be lower than the amount of available users ({poi_loader.user_count()}); cid={cid}, test={test}, _config={config}"
         return DataLoader(
             dataset,
             batch_size=1,
@@ -657,7 +671,9 @@ def get_dataloader_generators(
 
     # * This should load the global dataset, I think
     def get_federated_dataloader(
-        test: bool, _config: dict, rng_tuple: IsolatedRNG
+        test: bool,
+        _config: dict,  # * this is task.fed_test_config.dataloader_config
+        rng_tuple: IsolatedRNG,
     ) -> DataLoader:
         """Return a DataLoader for federated train/test sets.
 
@@ -685,7 +701,9 @@ def get_dataloader_generators(
         if not test:
             raise NotImplementedError  # Just a guard in case test=False is used
 
-        poi_loader = PoiDataloader(min_checkins=5 * config.sequence_length + 1)
+        poi_loader = PoiDataloader(
+            config.loc_count, min_checkins=5 * config.sequence_length + 1
+        )
         log(
             logging.WARNING,
             f"get_federated_dataloader() called, and poi_loader is reading from {partition_dir.resolve().parent / 'centralised' / 'client_0.txt'}...",
@@ -699,7 +717,7 @@ def get_dataloader_generators(
         )
         assert (
             config.batch_size < poi_loader.user_count()
-        ), "batch size must be lower than the amount of available users"
+        ), f"batch size ({config.batch_size}) must be lower than the amount of available users ({poi_loader.user_count()}); test={test}, _config={config}"
         return DataLoader(
             dataset,
             batch_size=1,

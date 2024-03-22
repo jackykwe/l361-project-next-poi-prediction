@@ -5,9 +5,8 @@ from enum import Enum
 
 import numpy as np
 import torch
-from torch import nn
 from flwr.common.logger import log
-from torch import Tensor
+from torch import Tensor, nn
 
 from project.types.common import IsolatedRNG
 
@@ -51,7 +50,15 @@ class FixNoiseStrategy(H0Strategy):
         super().__init__(hidden_size)
         mu = 0
         sd = 1 / self.hidden_size
-        self.h0 = torch.randn(self.hidden_size, requires_grad=False) * sd + mu
+        self.h0 = (
+            torch.randn(
+                self.hidden_size,
+                generator=torch.Generator().manual_seed(42),
+                requires_grad=False,
+            )
+            * sd
+            + mu
+        )
 
     def on_init(self, user_len: int, device: torch.device) -> Tensor:
         hs = []

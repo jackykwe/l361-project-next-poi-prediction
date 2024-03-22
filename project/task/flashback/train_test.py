@@ -130,12 +130,12 @@ def train(  # pylint: disable=too-many-arguments
                     h[0, j] = net.h0_strategy.on_reset(active_users[0][j])
 
             # * Need to squeeze: dataloader prepends the batch dimension, which is 1
-            x = x.squeeze().to(config.device)
-            t = t.squeeze().to(config.device)
-            s = s.squeeze().to(config.device)
-            y = y.squeeze().to(config.device)
-            y_t = y_t.squeeze().to(config.device)
-            y_s = y_s.squeeze().to(config.device)
+            x = x.squeeze(dim=0).to(config.device)
+            t = t.squeeze(dim=0).to(config.device)
+            s = s.squeeze(dim=0).to(config.device)
+            y = y.squeeze(dim=0).to(config.device)
+            y_t = y_t.squeeze(dim=0).to(config.device)
+            y_s = y_s.squeeze(dim=0).to(config.device)
             active_users = active_users.to(config.device)
 
             optimizer.zero_grad()
@@ -176,9 +176,9 @@ def train(  # pylint: disable=too-many-arguments
 
         if (e + 1) % 1 == 0:
             epoch_loss = np.mean(losses)
-            print(f"Epoch: {e + 1}/{config.epochs}")
-            print(f"Used learning rate: {scheduler.get_lr()[0]}")
-            print(f"Avg Loss: {epoch_loss}")
+            log(logging.INFO, f"Epoch: {e + 1}/{config.epochs}")
+            log(logging.INFO, f"Used learning rate: {scheduler.get_lr()[0]}")
+            log(logging.INFO, f"Avg Loss: {epoch_loss}")
 
     return len(cast(Sized, trainloader.dataset)), {
         "train_loss": epoch_loss,  # * average loss per sample for the last epoch
@@ -287,7 +287,7 @@ def test(
         # *     len(reset_h) is batch_size
         # *     active_users.shape is (batch_size,); a tensor of the user IDs corresponding to each batch (in the batch_size dimension; each batch corresponds to one user ID)
         for x, t, s, y, y_t, y_s, reset_h, active_users in testloader:
-            active_users = active_users.squeeze()
+            active_users = active_users.squeeze(dim=0)
             for j, reset in enumerate(reset_h):
                 if reset:
                     # if self.setting.is_lstm:
@@ -301,12 +301,12 @@ def test(
                     reset_count[active_users[j]] += 1
 
             # squeeze for reasons of "loader-batch-size-is-1"
-            x = x.squeeze().to(config.device)
-            t = t.squeeze().to(config.device)
-            s = s.squeeze().to(config.device)
-            y = y.squeeze()
-            y_t = y_t.squeeze().to(config.device)
-            y_s = y_s.squeeze().to(config.device)
+            x = x.squeeze(dim=0).to(config.device)
+            t = t.squeeze(dim=0).to(config.device)
+            s = s.squeeze(dim=0).to(config.device)
+            y = y.squeeze(dim=0)
+            y_t = y_t.squeeze(dim=0).to(config.device)
+            y_s = y_s.squeeze(dim=0).to(config.device)
 
             active_users = active_users.to(config.device)
 

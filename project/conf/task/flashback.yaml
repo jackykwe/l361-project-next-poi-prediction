@@ -10,18 +10,20 @@ train_structure: Flashback
 fit_config:
   # Net requires configuration!
   net_config:
-    loc_count: 472  #! DATASET/CITY (NOT .TXT) dependent.  TODO FOR FEDERATEd: CANNOT REMAP INTO INTERNAL-INTERNAL IDS!!@!! NEED CHECK self.poi2id AND self.user2id ARE FULL+IDENTITY MAPPINGS
-    user_count: 27  #! DATASET/CITY (NOT .TXT) dependent.  TODO FOR FEDERATEd: CANNOT REMAP INTO INTERNAL-INTERNAL IDS!!@!! NEED CHECK self.poi2id AND self.user2id ARE FULL+IDENTITY MAPPINGS
+    loc_count: 472  #! DATASET/CITY (NOT .TXT) dependent.
+    user_count: 27  #! DATASET/CITY (NOT .TXT) dependent.
     hidden_dim: 10
     lambda_t: 0.1
     lambda_s: 100
     debug_origin: task.fit_config.net_config
   # Dataloader requires batch_size
   dataloader_config:
+    loc_count: 472  #! DATASET/CITY (NOT .TXT) dependent.
     batch_size: 16
     sequence_length: 20
     city: CAL  # one of [CAL", "NY", "PHO", "SIN"]
     partition_type: centralised # either "centralised" or "fed_natural"
+    debug_origin: task.fit.dataloader_config
   # The train function requires epochs and learning_rate
   run_config:
     batch_size: 16  #! Interpolations do not work... ${..dataloader_config.batch_size}
@@ -43,10 +45,12 @@ eval_config:
     debug_origin: task.eval_config.net_config
   # The testing function batch size can be as high as the GPU supports
   dataloader_config:  #! Identical to fit_config, this is evaluation on the client
+    loc_count: 472  #! Identical to fit_config, this is evaluation on the client
     batch_size: 16  #! Identical to fit_config, this is evaluation on the client
     sequence_length: 20  #! Identical to fit_config, this is evaluation on the client
     city: CAL # one of [CAL", "NY", "PHO", "SIN"]  #! Identical to fit_config, this is evaluation on the client
     partition_type: centralised # either "centralised" or "fed_natural"  #! Identical to fit_config, this is evaluation on the client
+    debug_origin: task.eval_config.dataloader_config
   # Unlike train, the mnist train function takes no parameters
   run_config:
     batch_size: 16  #! Interpolations do not work... ${..dataloader_config.batch_size}
@@ -56,18 +60,20 @@ eval_config:
 # Follows the same conventions as the client config
 fed_test_config:
   net_config:
-    loc_count: 472
-    user_count: 27
+    loc_count: 472  #! DATASET/CITY (NOT .TXT) dependent.
+    user_count: 27  #! DATASET/CITY (NOT .TXT) dependent.
     hidden_dim: 10
     lambda_t: 0.1
     lambda_s: 100
     debug_origin: task.fed_test_config.net_config
   # The testing function batch size can be as high as the GPU supports
   dataloader_config:
-    batch_size: 16
+    loc_count: 472  #! DATASET/CITY (NOT .TXT) dependent.
+    batch_size: 16  #! DATASET/CITY (NOT .TXT) dependent.
     sequence_length: 20
-    city: CAL  # one of [CAL", "NY", "PHO", "SIN"]
+    city: CAL # one of [CAL", "NY", "PHO", "SIN"]  #! DATASET/CITY (NOT .TXT) dependent.
     partition_type: centralised  # always "centralised"; "fed_natural" is used in fit_config and eval_config only
+    debug_origin: task.fed_test_config.dataloader_config
   # Unlike train, the mnist train function takes no parameters
   run_config:
     batch_size: 16
@@ -76,8 +82,8 @@ fed_test_config:
 # Configuration instructions for initial parameter
 # generation
 net_config_initial_parameters:
-  loc_count: 472  #! DATASET/CITY (NOT .TXT) dependent, you're fucked....... hardcoded  CANNOT REMAP!!@!!
-  user_count: 27  #! DATASET/CITY (NOT .TXT) dependent, you're fucked....... hardcoded  CANNOT REMAP!!@!!
+  loc_count: 472  #! DATASET/CITY (NOT .TXT) dependent.
+  user_count: 27  #! DATASET/CITY (NOT .TXT) dependent.
   hidden_dim: 10
   lambda_t: 0.1
   lambda_s: 100
