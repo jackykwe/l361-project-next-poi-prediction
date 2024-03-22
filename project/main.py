@@ -303,7 +303,12 @@ def main(cfg: DictConfig) -> None:
             # Runs fit and eval on either one client or all of them
             # Avoids launching ray for debugging purposes
             # * Interferes with FedAvgFlashback; ignore if it's FedAvgFlashback
-            if cfg.strategy.name != "FedAvgFlashback":
+            # * Furthermore, if the dataset is huge, this is wasted work.
+            if (
+                cfg.strategy.name != "FedAvgFlashback"
+                and cfg.task.train_structure != "Flashback"
+            ):
+                log(logging.WARNING, "test_client() is running...")
                 test_client(
                     test_all_clients=cfg.debug_clients.all,
                     test_one_client=cfg.debug_clients.one,

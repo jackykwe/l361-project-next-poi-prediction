@@ -234,7 +234,7 @@ class PoiDataset(torch.utils.data.Dataset):
             )
         ):
             train_thr = int(len(loc) * 0.8)
-            log(logging.DEBUG, f"i={i} |-> train_thr={train_thr}")  # * DEBUG SET A
+            # log(logging.DEBUG, f"i={i} |-> train_thr={train_thr}")  # * DEBUG SET A
             if split == Split.TRAIN:
                 self.times[i] = time[:train_thr]
                 self.coords[i] = coord[:train_thr]
