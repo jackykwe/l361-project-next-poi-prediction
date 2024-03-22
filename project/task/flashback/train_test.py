@@ -11,6 +11,8 @@ from flwr.common.logger import log
 from pydantic import BaseModel
 from torch import nn
 from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from project.task.default.train_test import get_fed_eval_fn as get_default_fed_eval_fn
 from project.task.default.train_test import (
@@ -100,85 +102,88 @@ def train(  # pylint: disable=too-many-arguments
         optimizer, milestones=[20, 40, 60, 80], gamma=0.2
     )
 
-    for e in range(config.epochs):
-        h = net.h0_strategy.on_init(
-            config.batch_size, config.device
-        )  # * hidden states are preserved across dataloader iterations for as long as each user's sequence lasts. Shape is (1, setting.batch_size, setting.hidden_dim).
-        cast(
-            PoiDataset, trainloader.dataset
-        ).shuffle_users()  # shuffle users before each epoch!
+    with logging_redirect_tqdm():
+        for e in tqdm(range(config.epochs), desc="Epoch"):
+            h = net.h0_strategy.on_init(
+                config.batch_size, config.device
+            )  # * hidden states are preserved across dataloader iterations for as long as each user's sequence lasts. Shape is (1, setting.batch_size, setting.hidden_dim).
+            cast(
+                PoiDataset, trainloader.dataset
+            ).shuffle_users()  # shuffle users before each epoch!
 
-        losses = []
+            losses = []
 
-        # *     x.shape is (sequence_length==20, batch_size)
-        # *     t.shape is (sequence_length==20, batch_size)
-        # *     s.shape is (sequence_length==20, batch_size, 2)
-        # *     y.shape is (sequence_length==20, batch_size)
-        # *     y_t.shape is (sequence_length==20, batch_size)
-        # *     y_s.shape is (sequence_length==20, batch_size, 2)
-        # *     len(reset_h) is batch_size
-        # *     active_users.shape is (batch_size,); a tensor of the user IDs corresponding to each batch (in the batch_size dimension; each batch corresponds to one user ID)
-        for x, t, s, y, y_t, y_s, reset_h, active_users in trainloader:
-            # reset hidden states for newly added users
-            for j, reset in enumerate(reset_h):
-                if reset:
-                    # if setting.is_lstm:
-                    #     hc = h0_strategy.on_reset(active_users[0][j])
-                    #     h[0][0, j] = hc[0]
-                    #     h[1][0, j] = hc[1]
-                    # else:
-                    h[0, j] = net.h0_strategy.on_reset(active_users[0][j])
+            # *     x.shape is (sequence_length==20, batch_size)
+            # *     t.shape is (sequence_length==20, batch_size)
+            # *     s.shape is (sequence_length==20, batch_size, 2)
+            # *     y.shape is (sequence_length==20, batch_size)
+            # *     y_t.shape is (sequence_length==20, batch_size)
+            # *     y_s.shape is (sequence_length==20, batch_size, 2)
+            # *     len(reset_h) is batch_size
+            # *     active_users.shape is (batch_size,); a tensor of the user IDs corresponding to each batch (in the batch_size dimension; each batch corresponds to one user ID)
+            for x, t, s, y, y_t, y_s, reset_h, active_users in tqdm(
+                trainloader, desc="Dataloader (train)", leave=False
+            ):
+                # reset hidden states for newly added users
+                for j, reset in enumerate(reset_h):
+                    if reset:
+                        # if setting.is_lstm:
+                        #     hc = h0_strategy.on_reset(active_users[0][j])
+                        #     h[0][0, j] = hc[0]
+                        #     h[1][0, j] = hc[1]
+                        # else:
+                        h[0, j] = net.h0_strategy.on_reset(active_users[0][j])
 
-            # * Need to squeeze: dataloader prepends the batch dimension, which is 1
-            x = x.squeeze(dim=0).to(config.device)
-            t = t.squeeze(dim=0).to(config.device)
-            s = s.squeeze(dim=0).to(config.device)
-            y = y.squeeze(dim=0).to(config.device)
-            y_t = y_t.squeeze(dim=0).to(config.device)
-            y_s = y_s.squeeze(dim=0).to(config.device)
-            active_users = active_users.to(config.device)
+                # * Need to squeeze: dataloader prepends the batch dimension, which is 1
+                x = x.squeeze(dim=0).to(config.device)
+                t = t.squeeze(dim=0).to(config.device)
+                s = s.squeeze(dim=0).to(config.device)
+                y = y.squeeze(dim=0).to(config.device)
+                y_t = y_t.squeeze(dim=0).to(config.device)
+                y_s = y_s.squeeze(dim=0).to(config.device)
+                active_users = active_users.to(config.device)
 
-            optimizer.zero_grad()
+                optimizer.zero_grad()
 
-            """ takes a batch (users x location sequence)
-            and corresponding targets in order to compute the training loss """
-            # * for shapes of x, t, s, y, y_t, y_s, reset_h, active_users, see bottom of PoiDataset.__getitem__()
-            # * note that squeeze has been called, so there isn't a prepended batch dimension. The
-            # * dimensions stated in the bottom of PoiDataset.__getitem__() apply here exactly.
-            # *! NB: active_user here has NOT been squeezed, different from evaluate().
-            # *!     It doesn't matter.
+                """ takes a batch (users x location sequence)
+                and corresponding targets in order to compute the training loss """
+                # * for shapes of x, t, s, y, y_t, y_s, reset_h, active_users, see bottom of PoiDataset.__getitem__()
+                # * note that squeeze has been called, so there isn't a prepended batch dimension. The
+                # * dimensions stated in the bottom of PoiDataset.__getitem__() apply here exactly.
+                # *! NB: active_user here has NOT been squeezed, different from evaluate().
+                # *!     It doesn't matter.
 
-            out, h = net(x, t, s, y_t, y_s, h, active_users)
-            # * out shape is (sequence_length==20, batch_size, loc_count==total number of locations)
-            # * h shape (1, batch_size, hidden_dim==10)
+                out, h = net(x, t, s, y_t, y_s, h, active_users)
+                # * out shape is (sequence_length==20, batch_size, loc_count==total number of locations)
+                # * h shape (1, batch_size, hidden_dim==10)
 
-            h = (
-                h.detach()
-            )  # * fix courtesy of https://github.com/eXascaleInfolab/Flashback_code/issues/2#issuecomment-1149924973
-            out = out.view(
-                -1, config.loc_count
-            )  # * shape is  (sequence_length==20 * batch_size, loc_count==total number of locations)
-            y = y.view(-1)  # * flatten y into a single dimension vector;
-            # * (sequence_length==20, batch_size) |-> (sequence_length==20 * batch_size,)
-            loss = criterion(out, y)
-            loss.backward(retain_graph=True)
-            losses.append(loss.item())
-            optimizer.step()
-            # * See https://stackoverflow.com/a/53975741 for a discussion on how loss.backward() and
-            # * optimizer.step() are linked: essentially the gradients are stored on the model parameter
-            # * tensors themselves; model parameter tensors have an implicit computational graph, and when
-            # * loss takes in the predicted label (and compares it with the actual label), gradients are
-            # * calculated from predicted label backwards through its computational graph. These gradients
-            # * are stored on the tensors involved in the computational graph. optimizer.step() then iterates
-            # * through model parameters and uses the stored gradients to update them.
+                h = (
+                    h.detach()
+                )  # * fix courtesy of https://github.com/eXascaleInfolab/Flashback_code/issues/2#issuecomment-1149924973
+                out = out.view(
+                    -1, config.loc_count
+                )  # * shape is  (sequence_length==20 * batch_size, loc_count==total number of locations)
+                y = y.view(-1)  # * flatten y into a single dimension vector;
+                # * (sequence_length==20, batch_size) |-> (sequence_length==20 * batch_size,)
+                loss = criterion(out, y)
+                loss.backward(retain_graph=True)
+                losses.append(loss.item())
+                optimizer.step()
+                # * See https://stackoverflow.com/a/53975741 for a discussion on how loss.backward() and
+                # * optimizer.step() are linked: essentially the gradients are stored on the model parameter
+                # * tensors themselves; model parameter tensors have an implicit computational graph, and when
+                # * loss takes in the predicted label (and compares it with the actual label), gradients are
+                # * calculated from predicted label backwards through its computational graph. These gradients
+                # * are stored on the tensors involved in the computational graph. optimizer.step() then iterates
+                # * through model parameters and uses the stored gradients to update them.
 
-        scheduler.step()
+            scheduler.step()
 
-        if (e + 1) % 1 == 0:
-            epoch_loss = np.mean(losses)
-            log(logging.INFO, f"Epoch: {e + 1}/{config.epochs}")
-            log(logging.INFO, f"Used learning rate: {scheduler.get_lr()[0]}")
-            log(logging.INFO, f"Avg Loss: {epoch_loss}")
+            if (e + 1) % 1 == 0:
+                epoch_loss = np.mean(losses)
+                log(logging.INFO, f"Epoch: {e + 1}/{config.epochs}")
+                log(logging.INFO, f"Used learning rate: {scheduler.get_lr()[0]}")
+                log(logging.INFO, f"Avg Loss: {epoch_loss}")
 
     return len(cast(Sized, trainloader.dataset)), {
         "train_loss": epoch_loss,  # * average loss per sample for the last epoch
@@ -286,103 +291,108 @@ def test(
         # *     y_s.shape is (sequence_length==20, batch_size, 2)
         # *     len(reset_h) is batch_size
         # *     active_users.shape is (batch_size,); a tensor of the user IDs corresponding to each batch (in the batch_size dimension; each batch corresponds to one user ID)
-        for x, t, s, y, y_t, y_s, reset_h, active_users in testloader:
-            active_users = active_users.squeeze(dim=0)
-            for j, reset in enumerate(reset_h):
-                if reset:
-                    # if self.setting.is_lstm:
-                    #     hc = self.h0_strategy.on_reset_test(active_users[j], self.setting.device)
-                    #     h[0][0, j] = hc[0]
-                    #     h[1][0, j] = hc[1]
-                    # else:
-                    h[0, j] = net.h0_strategy.on_reset_test(
-                        active_users[j], config.device
-                    )
-                    reset_count[active_users[j]] += 1
+        with logging_redirect_tqdm():
+            for x, t, s, y, y_t, y_s, reset_h, active_users in tqdm(
+                testloader, desc="Dataloader (test)"
+            ):
+                active_users = active_users.squeeze(dim=0)
+                for j, reset in enumerate(reset_h):
+                    if reset:
+                        # if self.setting.is_lstm:
+                        #     hc = self.h0_strategy.on_reset_test(active_users[j], self.setting.device)
+                        #     h[0][0, j] = hc[0]
+                        #     h[1][0, j] = hc[1]
+                        # else:
+                        h[0, j] = net.h0_strategy.on_reset_test(
+                            active_users[j], config.device
+                        )
+                        reset_count[active_users[j]] += 1
 
-            # squeeze for reasons of "loader-batch-size-is-1"
-            x = x.squeeze(dim=0).to(config.device)
-            t = t.squeeze(dim=0).to(config.device)
-            s = s.squeeze(dim=0).to(config.device)
-            y = y.squeeze(dim=0)
-            y_t = y_t.squeeze(dim=0).to(config.device)
-            y_s = y_s.squeeze(dim=0).to(config.device)
+                # squeeze for reasons of "loader-batch-size-is-1"
+                x = x.squeeze(dim=0).to(config.device)
+                t = t.squeeze(dim=0).to(config.device)
+                s = s.squeeze(dim=0).to(config.device)
+                y = y.squeeze(dim=0)
+                y_t = y_t.squeeze(dim=0).to(config.device)
+                y_s = y_s.squeeze(dim=0).to(config.device)
 
-            active_users = active_users.to(config.device)
+                active_users = active_users.to(config.device)
 
-            # evaluate:
-            """ takes a batch (users x location sequence)
-            then does the prediction and returns a list of user x sequence x location
-            describing the probabilities for each location at each position in the sequence.
-            t, s are temporal and spatial data related to the location sequence x
-            y_t, y_s are temporal and spatial data related to the target sequence y.
-            Flashback does not access y_t and y_s for prediction!
-            """
-            # * for shapes of x, t, s, y, y_t, y_s, reset_h, active_users, see bottom of PoiDataset.__getitem__()
-            # * note that squeeze has been called, so there isn't a prepended batch dimension. The
-            # * dimensions stated in the bottom of PoiDataset.__getitem__() apply here exactly.
-            # *! NB: active_user here has been squeezed, different from loss().
-            # *!     It doesn't matter.
+                # evaluate:
+                """ takes a batch (users x location sequence)
+                then does the prediction and returns a list of user x sequence x location
+                describing the probabilities for each location at each position in the sequence.
+                t, s are temporal and spatial data related to the location sequence x
+                y_t, y_s are temporal and spatial data related to the target sequence y.
+                Flashback does not access y_t and y_s for prediction!
+                """
+                # * for shapes of x, t, s, y, y_t, y_s, reset_h, active_users, see bottom of PoiDataset.__getitem__()
+                # * note that squeeze has been called, so there isn't a prepended batch dimension. The
+                # * dimensions stated in the bottom of PoiDataset.__getitem__() apply here exactly.
+                # *! NB: active_user here has been squeezed, different from loss().
+                # *!     It doesn't matter.
 
-            out, h = net(x, t, s, y_t, y_s, h, active_users)
-            # * out shape is (sequence_length==20, batch_size, loc_count==total number of locations)
-            # * h shape (1, batch_size, hidden_dim==10)
+                out, h = net(x, t, s, y_t, y_s, h, active_users)
+                # * out shape is (sequence_length==20, batch_size, loc_count==total number of locations)
+                # * h shape (1, batch_size, hidden_dim==10)
 
-            # * Frankenstein'ed code; to calculate loss
-            # * shape is  (sequence_length==20 * batch_size, loc_count==total number of locations)
-            losscalc_out = out.view(-1, net.input_size)
-            losscalc_y = y.view(-1)  # * flatten y into a single dimension vector;
-            # * (sequence_length==20, batch_size) |-> (sequence_length==20 * batch_size,)
-            losscalc_loss = criterion(losscalc_out, losscalc_y)
-            losses.append(losscalc_loss.item())
+                # * Frankenstein'ed code; to calculate loss
+                # * shape is  (sequence_length==20 * batch_size, loc_count==total number of locations)
+                losscalc_out = out.view(-1, net.input_size)
+                losscalc_y = y.view(-1)  # * flatten y into a single dimension vector;
+                # * (sequence_length==20, batch_size) |-> (sequence_length==20 * batch_size,)
+                losscalc_loss = criterion(losscalc_out, losscalc_y)
+                losses.append(losscalc_loss.item())
 
-            out = out.transpose(0, 1)  # ! model outputs logits
-            # * out shape is (batch_size, sequence_length==20, loc_count==total number of locations)
-            # * h shape is (1, batch_size, hidden_dim==10)
+                out = out.transpose(0, 1)  # ! model outputs logits
+                # * out shape is (batch_size, sequence_length==20, loc_count==total number of locations)
+                # * h shape is (1, batch_size, hidden_dim==10)
 
-            for j in range(config.batch_size):
-                # o contains a per user list of votes for all locations for each sequence entry
-                # * shape is (sequence_length==20, loc_count==total number of locations)
-                o = out[j]
+                for j in range(config.batch_size):
+                    # o contains a per user list of votes for all locations for each sequence entry
+                    # * shape is (sequence_length==20, loc_count==total number of locations)
+                    o = out[j]
 
-                # partition elements
-                # * shape is (sequence_length==20, loc_count==total number of locations)
-                o_n = o.cpu().detach().numpy()
-                # * shape is (sequence_length==20, top 10 location IDs)
-                ind = np.argpartition(o_n, -10, axis=1)[:, -10:]  # top 10 elements
+                    # partition elements
+                    # * shape is (sequence_length==20, loc_count==total number of locations)
+                    o_n = o.cpu().detach().numpy()
+                    # * shape is (sequence_length==20, top 10 location IDs)
+                    ind = np.argpartition(o_n, -10, axis=1)[:, -10:]  # top 10 elements
 
-                # * shape is (sequence_length==20,);  y shape is (sequence_length==20, batch_size)
-                y_j = y[:, j]
+                    # * shape is (sequence_length==20,);  y shape is (sequence_length==20, batch_size)
+                    y_j = y[:, j]
 
-                for k in range(len(y_j)):
-                    if reset_count[active_users[j]] > 1:
-                        continue  # skip already evaluated users.
+                    for k in range(len(y_j)):
+                        if reset_count[active_users[j]] > 1:
+                            continue  # skip already evaluated users.
 
-                    # resort indices for k:
-                    ind_k = ind[k]  # * shape is (top 10 location IDs,)
-                    # sort top 10 elements descending
-                    r = ind_k[np.argsort(-o_n[k, ind_k], axis=0)]
+                        # resort indices for k:
+                        ind_k = ind[k]  # * shape is (top 10 location IDs,)
+                        # sort top 10 elements descending
+                        r = ind_k[np.argsort(-o_n[k, ind_k], axis=0)]
 
-                    # * shape is (top 10 location IDs in descending order,)
-                    r = torch.tensor(r)
-                    t = y_j[k]  # * shape is (1,), the correct answer
+                        # * shape is (top 10 location IDs in descending order,)
+                        r = torch.tensor(r)
+                        t = y_j[k]  # * shape is (1,), the correct answer
 
-                    # compute MAP:  #* mean average precision
-                    # * shape is (loc_count==total number of locations,)
-                    r_kj = o_n[k, :]
-                    # * shape is (1,), the predicted "probability" (? no softmax but ok) for the correct answer
-                    t_val = r_kj[t]
-                    upper = np.where(r_kj > t_val)[0]  # * [0] to obtain from a 1-tuple
-                    precision = 1.0 / (1 + len(upper))
+                        # compute MAP:  #* mean average precision
+                        # * shape is (loc_count==total number of locations,)
+                        r_kj = o_n[k, :]
+                        # * shape is (1,), the predicted "probability" (? no softmax but ok) for the correct answer
+                        t_val = r_kj[t]
+                        upper = np.where(r_kj > t_val)[
+                            0
+                        ]  # * [0] to obtain from a 1-tuple
+                        precision = 1.0 / (1 + len(upper))
 
-                    # store
-                    # ! Isn't this precision, not recall?
-                    u_iter_cnt[active_users[j]] += 1
-                    u_recall1[active_users[j]] += t in r[:1]
-                    u_recall5[active_users[j]] += t in r[:5]
-                    u_recall10[active_users[j]] += t in r[:10]
-                    # ! TODO This precision measure is wack
-                    u_average_precision[active_users[j]] += precision
+                        # store
+                        # ! Isn't this precision, not recall?
+                        u_iter_cnt[active_users[j]] += 1
+                        u_recall1[active_users[j]] += t in r[:1]
+                        u_recall5[active_users[j]] += t in r[:5]
+                        u_recall10[active_users[j]] += t in r[:10]
+                        # ! TODO This precision measure is wack
+                        u_average_precision[active_users[j]] += precision
 
         formatter = "{0:.8f}"
         for j in range(net.user_count):

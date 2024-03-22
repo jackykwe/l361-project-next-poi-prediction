@@ -183,6 +183,20 @@ def _preprocess_data(
             )
 
 
+def _print_statistics(postprocessed_partitions_root: Path) -> None:
+    """
+    Prints number of users and locations in each dataset.
+    """
+    for city in tqdm(("CAL", "NY", "PHO", "SIN"), desc="Preprocessing"):
+        csv_path = postprocessed_partitions_root / city / "centralised" / "client_0.txt"
+        df = pd.read_csv(csv_path, sep="\t", header=None)
+        user_count = len(df.loc[:, 0].unique())
+        loc_count = len(df.loc[:, 4].unique())
+        log(
+            logging.INFO, f"city={city}: user_count={user_count}, loc_count={loc_count}"
+        )
+
+
 @hydra.main(
     config_path="../../conf",
     config_name="flashback",
@@ -213,6 +227,10 @@ def download_and_preprocess(cfg: DictConfig) -> None:
         raw_dataset_dir=Path(cfg.dataset.raw_dataset_dir),
         postprocessed_partitions_root=Path(cfg.dataset.postprocessed_partitions_root),
         sequence_length=cfg.dataset.sequence_length,
+    )
+
+    _print_statistics(
+        postprocessed_partitions_root=Path(cfg.dataset.postprocessed_partitions_root)
     )
 
     # You should obtain numbers like the following:
