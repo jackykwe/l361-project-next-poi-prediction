@@ -1,0 +1,50 @@
+# @package _global_
+---
+defaults:
+- override /strategy: fedavgflashback
+task:
+  dispatch_data:
+    heterogeneity: homogeneous_approximation
+    city: CAL
+    partition_type: fed_natural
+  fit_config:
+    net_config:
+      h0_seed: 42
+      loc_count: 138
+      user_count: 1
+    dataloader_config:
+      loc_count: 138
+      batch_size: 1
+    run_config:
+      loc_count: 138
+      batch_size: 1
+      client_dropout_probability: 0.0
+  eval_config:
+    net_config:
+      h0_seed: 42
+      loc_count: 138
+      user_count: 1
+    dataloader_config:
+      loc_count: 138
+      batch_size: 1
+    run_config:
+      batch_size: 1
+  fed_test_config:
+    net_config:
+      h0_seed: 42
+      loc_count: 138
+      user_count: 5
+    dataloader_config:
+      loc_count: 138
+      batch_size: 4
+    run_config:
+      batch_size: 4
+  net_config_initial_parameters:
+    h0_seed: 42
+    loc_count: 138
+    user_count: 5
+fed:
+  num_rounds: 20
+  num_total_clients: 5
+  num_clients_per_round: 1
+  num_evaluate_clients_per_round: 5
