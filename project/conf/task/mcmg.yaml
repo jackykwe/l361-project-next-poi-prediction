@@ -37,7 +37,8 @@ fit_config:
     POI_n_node: 580
 
   # Default train does nothing
-  run_config: { }
+  run_config:
+    client_dropout: 0.1
   extra: { }
 
 # Client eval config
