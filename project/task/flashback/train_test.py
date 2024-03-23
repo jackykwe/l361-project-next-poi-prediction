@@ -43,6 +43,7 @@ class TrainConfig(BaseModel):
     learning_rate: float
     weight_decay: float
     loc_count: int
+    client_dropout_probability: float
 
     class Config:
         """Setting to allow any types, including library ones like torch.device."""
@@ -90,6 +91,10 @@ def train(  # pylint: disable=too-many-arguments
     log(logging.WARNING, f"train() called with _config={_config}")
     config: TrainConfig = TrainConfig(**_config)
     del _config
+
+    if _rng_tuple[1].random() <= config.client_dropout_probability:
+        # Client dropped out; do not consider this client in the round's training
+        return 1, {"train_loss": 0}
 
     net.to(config.device)
     net.train()
@@ -386,12 +391,11 @@ def test(
                         precision = 1.0 / (1 + len(upper))
 
                         # store
-                        # ! Isn't this precision, not recall?
                         u_iter_cnt[active_users[j]] += 1
                         u_recall1[active_users[j]] += t in r[:1]
                         u_recall5[active_users[j]] += t in r[:5]
                         u_recall10[active_users[j]] += t in r[:10]
-                        # ! TODO This precision measure is wack
+                        # ! TODO This precision measure is wack... No. It's similar to NDCG.
                         u_average_precision[active_users[j]] += precision
 
         formatter = "{0:.8f}"

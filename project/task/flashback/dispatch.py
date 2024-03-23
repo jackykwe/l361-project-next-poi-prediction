@@ -112,29 +112,20 @@ def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
         "partition_dir",
         None,
     )
+    heterogeneity: str | None = (
+        cfg.get("task", {})
+        .get("dispatch_data", None)
+        .get("heterogeneity", None)
+    )
     city: str | None = (
         cfg.get("task", {})
-        .get(
-            "fit_config",
-            None,
-        )
-        .get(
-            "dataloader_config",
-            None,
-        )
-        .get("city")
+        .get("dispatch_data", None)
+        .get("city", None)
     )
     partition_type: str | None = (
         cfg.get("task", {})
-        .get(
-            "fit_config",
-            None,
-        )
-        .get(
-            "dataloader_config",
-            None,
-        )
-        .get("partition_type")
+        .get("dispatch_data", None)
+        .get("partition_type", None)
     )
 
     # Only consider situations where both are not None
@@ -142,6 +133,7 @@ def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
     if all((
         client_model_and_data is not None,
         partition_dir is not None,
+        heterogeneity is not None,
         city is not None,
         partition_type is not None,
     )):
@@ -152,6 +144,7 @@ def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
             fed_dataloader_gen,
         ) = get_dataloader_generators(
             Path(cast(str, partition_dir))
+            / cast(str, heterogeneity)
             / cast(str, city)
             / cast(str, partition_type),
         )

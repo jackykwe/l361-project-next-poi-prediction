@@ -30,8 +30,6 @@ class ClientDataloaderConfig(BaseModel):
     # sequence_length: just here for a secondary check that the dataset_preparation was
     # successful; Flashback was coded like this so I'll respect it
     sequence_length: int
-    city: str  # used to select dataset
-    partition_type: str  # used to select between centralised/federated setting
 
     class Config:
         """Setting to allow any types, including library ones like torch.device."""
@@ -51,8 +49,6 @@ class FedDataloaderConfig(BaseModel):
     # sequence_length: just here for a secondary check that the dataset_preparation was
     # successful; Flashback was coded like this so I'll respect it
     sequence_length: int
-    city: str  # used to select dataset
-    partition_type: str  # used to select between centralised/federated setting
 
     class Config:
         """Setting to allow any types, including library ones like torch.device."""

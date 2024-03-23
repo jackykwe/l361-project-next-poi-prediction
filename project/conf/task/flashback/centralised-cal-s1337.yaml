@@ -1,44 +1,46 @@
 # @package _global_
 ---
+defaults:
+  - override /strategy: fedavg
+
 task:
-  model_and_data: Flashback_MCMG
-  train_structure: Flashback
+  dispatch_data:
+    heterogeneity: all_clients
+    city: CAL # one of ["CAL", "NY", "PHO", "SIN"]
+    partition_type: centralised # either "centralised" or "fed_natural"
   fit_config:
     net_config:
+      h0_seed: 1337
       loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
       user_count: 27 #! DATASET/CITY (NOT .TXT) dependent.
     dataloader_config:
       loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
-      batch_size: 16
-      city: CAL # one of [CAL", "NY", "PHO", "SIN"]
-      partition_type: centralised # either "centralised" or "fed_natural"
+      batch_size: 16 #! set to biggest power of two smaller than user_count
     run_config:
       batch_size: 16 #! Interpolations do not work... ${..dataloader_config.batch_size}
-      epochs: 5 # also equal to validate_epoch: we test once the number of epochs in a single round has ended.
       loc_count: 472 #! Interpolations do not work... ${..net_config.loc_count}
   eval_config:
     net_config: #! Identical to fit_config, this is evaluation on the client
+      h0_seed: 1337
       loc_count: 472 #! Identical to fit_config, this is evaluation on the client
       user_count: 27 #! Identical to fit_config, this is evaluation on the client
     dataloader_config: #! Identical to fit_config, this is evaluation on the client
       loc_count: 472 #! Identical to fit_config, this is evaluation on the client
       batch_size: 16 #! Identical to fit_config, this is evaluation on the client
-      city: CAL # one of [CAL", "NY", "PHO", "SIN"]  #! Identical to fit_config, this is evaluation on the client
-      partition_type: centralised # either "centralised" or "fed_natural"  #! Identical to fit_config, this is evaluation on the client
     run_config:
       batch_size: 16 #! Interpolations do not work... ${..dataloader_config.batch_size}
   fed_test_config:
     net_config:
+      h0_seed: 1337
       loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
       user_count: 27 #! DATASET/CITY (NOT .TXT) dependent.
     dataloader_config:
       loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
-      batch_size: 16 #! DATASET/CITY (NOT .TXT) dependent.
-      city: CAL # one of [CAL", "NY", "PHO", "SIN"]  #! DATASET/CITY (NOT .TXT) dependent.
-      partition_type: centralised # always "centralised"; "fed_natural" is used in fit_config and eval_config only
+      batch_size: 16 #! set to biggest power of two smaller than user_count
     run_config:
       batch_size: 16
   net_config_initial_parameters:
+    h0_seed: 1337
     loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
     user_count: 27 #! DATASET/CITY (NOT .TXT) dependent.
 

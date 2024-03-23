@@ -17,13 +17,13 @@ Initialize RNNs hidden states
 
 
 # * Adapted from Flashback's code
-def create_h0_strategy(hidden_size: int, is_lstm: bool):
+def create_h0_strategy(seed: int, hidden_size: int, is_lstm: bool):
     if is_lstm:
         return LstmStrategy(
-            hidden_size, FixNoiseStrategy(hidden_size), FixNoiseStrategy(hidden_size)
+            hidden_size, FixNoiseStrategy(seed, hidden_size), FixNoiseStrategy(seed, hidden_size)
         )
     else:
-        return FixNoiseStrategy(hidden_size)
+        return FixNoiseStrategy(seed, hidden_size)
 
 
 # * Adapted from Flashback's code
@@ -46,14 +46,14 @@ class H0Strategy:
 class FixNoiseStrategy(H0Strategy):
     """use fixed normal noise as initialization"""
 
-    def __init__(self, hidden_size: int) -> None:
+    def __init__(self, seed: int, hidden_size: int) -> None:
         super().__init__(hidden_size)
         mu = 0
         sd = 1 / self.hidden_size
         self.h0 = (
             torch.randn(
                 self.hidden_size,
-                generator=torch.Generator().manual_seed(42),
+                generator=torch.Generator().manual_seed(seed),
                 requires_grad=False,
             )
             * sd
@@ -152,6 +152,7 @@ class Flashback(nn.Module):
         hidden_size: int,
         lambda_t: float,
         lambda_s: float,
+        h0_seed: int,  #* h0 is a constant always
     ) -> None:
         super().__init__()
         self.input_size = input_size
@@ -183,7 +184,9 @@ class Flashback(nn.Module):
         # TODO NB: Can never predict never-before-seen locations in the train dataset.
 
         self.h0_strategy: FixNoiseStrategy = create_h0_strategy(
-            hidden_size, False
+            h0_seed,
+            hidden_size,
+            False
         )  # * initial hidden state to RNN
 
     def forward(
@@ -269,6 +272,7 @@ def get_net(
         f"get_net() using debug_origin={_config['debug_origin']}, _config={_config}",
     )
     return Flashback(
+        h0_seed=_config["h0_seed"],
         input_size=_config["loc_count"],
         user_count=_config["user_count"],
         hidden_size=_config["hidden_dim"],

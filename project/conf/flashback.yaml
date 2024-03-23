@@ -13,6 +13,9 @@ hydra:
   run:
     dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
     # dir: /path/to/your/output/directory
+  sweep:
+    dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.override_dirname}
 
 # Working dir to save temporary files to
 # If null, defaults to hydra_dir/working
@@ -62,7 +65,7 @@ wandb_id: null
 wandb:
   setup:
     project: template
-    tags: ['strategy_${strategy.name}', 'seed_${fed.seed}']
+    tags: ["strategy_${strategy.name}", "seed_${fed.seed}"]
     entity: null
     mode: online
 
