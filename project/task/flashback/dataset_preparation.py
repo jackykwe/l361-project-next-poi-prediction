@@ -184,6 +184,20 @@ def _preprocess_data_all_clients(
                 header=False,
                 index=False,
             )
+            # Datasets for single client training (non-federated setup)
+            (postprocessed_partitions_root / "all_clients_nonfederated" / f"{city}-{user_id}" / "centralised").mkdir(
+                parents=True, exist_ok=True
+            )
+            df_single_user.to_csv(
+                postprocessed_partitions_root
+                / "all_clients_nonfederated"
+                / f"{city}-{user_id}"
+                / f"centralised"
+                / f"client_0.txt",
+                sep="\t",
+                header=False,
+                index=False,
+            )
 
         with postprocessed_reverse_mapper_path.open("w") as f:
             f.write(
@@ -505,6 +519,49 @@ def _preprocess_data_homogeneous_approximation(
                 )
             )
 
+def _print_preprocessing_statistics(
+    raw_dataset_dir: Path, postprocessed_partitions_root: Path, sequence_length: int
+) -> None:
+    """
+    Reprints stuff that would have been printed in the above functions (useful if
+    rerunning task.dataset_preparation)
+    """
+    for heterogeneity in ("all_clients", "smaller_quantity_skew", "homogeneous_approximation"):
+        for city in ("CAL", "NY", "PHO", "SIN"):
+            csv_path = raw_dataset_dir / city / f"{city}_checkin.csv"
+            df_raw = pd.read_csv(csv_path)
+            df_raw = df_raw.loc[:, ["UserId", "Local_Time", "Latitude", "Longitude", "VenueId"]]
+            debug_total_checkins_before_drop = len(df_raw)
+            debug_total_users_before_drop = len(df_raw.loc[:, "UserId"].unique())
+
+            csv_path = postprocessed_partitions_root / heterogeneity / city / "centralised" / "client_0.txt"
+            df_postprocessed = pd.read_csv(csv_path, sep="\t", header=None)
+            debug_total_checkins_after_drop = len(df_postprocessed)
+            debug_total_users_after_drop = len(df_postprocessed.loc[:, 0].unique())
+
+            required_minimum_checkins = 5 * sequence_length + 1
+
+            if heterogeneity == "all_clients":
+                descriptor = f"After dropping users with less than {required_minimum_checkins} checkins"
+            elif heterogeneity == "smaller_quantity_skew":
+                descriptor = f"After dropping users with less than {required_minimum_checkins} checkins, then those not near the resultant mean"
+            elif heterogeneity == "homogeneous_approximation":
+                descriptor = f"After dropping users with less than {required_minimum_checkins} checkins, then those not very near the resultant mode"
+            else:
+                raise NotImplementedError
+            log(
+                logging.INFO,
+                f"[{city}: {heterogeneity}] {descriptor}:",
+            )
+            log(
+                logging.INFO,
+                f"    {debug_total_checkins_after_drop}/{debug_total_checkins_before_drop} checkins remain ({debug_total_checkins_after_drop * 100 / debug_total_checkins_before_drop:.2f}%)",
+            )
+            log(
+                logging.INFO,
+                f"    {debug_total_users_after_drop}/{debug_total_users_before_drop} users remain ({debug_total_users_after_drop * 100 / debug_total_users_before_drop:.2f}%)",
+            )
+
 def _print_statistics(postprocessed_partitions_root: Path) -> None:
     """
     Prints number of users and locations in each dataset.
@@ -549,7 +606,8 @@ def download_and_preprocess(cfg: DictConfig) -> None:
     for fn in (
         _preprocess_data_all_clients,
         _preprocess_data_smaller_quantity_skew,
-        _preprocess_data_homogeneous_approximation
+        _preprocess_data_homogeneous_approximation,
+        _print_preprocessing_statistics
     ):
         fn(
             raw_dataset_dir=Path(cfg.dataset.raw_dataset_dir),

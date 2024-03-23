@@ -1,0 +1,50 @@
+# @package _global_
+---
+defaults:
+- override /strategy: fedavg
+task:
+  dispatch_data:
+    heterogeneity: all_clients_nonfederated
+    city: PHO-42
+    partition_type: centralised
+  fit_config:
+    net_config:
+      h0_seed: 361
+      loc_count: 1479
+      user_count: 1
+    dataloader_config:
+      loc_count: 1479
+      batch_size: 1
+    run_config:
+      loc_count: 1479
+      batch_size: 1
+      client_dropout_probability: 0.0
+  eval_config:
+    net_config:
+      h0_seed: 361
+      loc_count: 1479
+      user_count: 1
+    dataloader_config:
+      loc_count: 1479
+      batch_size: 1
+    run_config:
+      batch_size: 1
+  fed_test_config:
+    net_config:
+      h0_seed: 361
+      loc_count: 1479
+      user_count: 1
+    dataloader_config:
+      loc_count: 1479
+      batch_size: 1
+    run_config:
+      batch_size: 1
+  net_config_initial_parameters:
+    h0_seed: 361
+    loc_count: 1479
+    user_count: 1
+fed:
+  num_rounds: 20
+  num_total_clients: 1
+  num_clients_per_round: 1
+  num_evaluate_clients_per_round: 1

@@ -565,6 +565,7 @@ class PoiDataloader:
 
             location: int = int(tokens[4])  # location nr
             if self.poi2id.get(location) is None:  # get-or-set locations
+                raise Exception(f"Should not occur as poi2id should have been set during __init__(): location={location} not a key in self.poi2id={self.poi2id}")
                 self.poi2id[location] = len(self.poi2id)
             location = cast(int, self.poi2id.get(location))
 
@@ -712,8 +713,9 @@ def get_dataloader_generators(
             Split.TEST if test else Split.TRAIN,
         )
         assert (
-            config.batch_size < poi_loader.user_count()
-        ), f"batch size ({config.batch_size}) must be lower than the amount of available users ({poi_loader.user_count()}); test={test}, _config={config}"
+            config.batch_size
+            <= poi_loader.user_count()  # ! Should be ok, changed < to <=
+        ), f"batch size ({config.batch_size}) must be lower than the amount of available users ({poi_loader.user_count()}); cid={cid}, test={test}, _config={config}"
         return DataLoader(
             dataset,
             batch_size=1,

@@ -89,11 +89,86 @@ def generate_conf(
         }
     }
 
+def generate_conf_nonfederated(
+    city: Literal["CAL", "NY", "PHO", "SIN"],
+    user_id: int,
+    seed: int,
+    user_loc_counts: dict
+):
+    return {
+        "defaults": [
+            {
+                "override /strategy": "fedavg"
+            }
+        ],
+        "task": {
+            "dispatch_data": {
+                "heterogeneity": "all_clients_nonfederated",
+                "city": f"{city}-{user_id}",
+                "partition_type": "centralised"
+            },
+            "fit_config": {
+                "net_config": {
+                    "h0_seed": seed,
+                    "loc_count": user_loc_counts["all_clients"][city]["loc_count"],
+                    "user_count": 1
+                },
+                "dataloader_config": {
+                    "loc_count": user_loc_counts["all_clients"][city]["loc_count"],
+                    "batch_size": 1
+                },
+                "run_config": {
+                    "loc_count": user_loc_counts["all_clients"][city]["loc_count"],
+                    "batch_size": 1,
+                    "client_dropout_probability": 0.0
+                }
+            },
+            "eval_config": {
+                "net_config": {
+                    "h0_seed": seed,
+                    "loc_count": user_loc_counts["all_clients"][city]["loc_count"],
+                    "user_count": 1
+                },
+                "dataloader_config": {
+                    "loc_count": user_loc_counts["all_clients"][city]["loc_count"],
+                    "batch_size": 1
+                },
+                "run_config": {
+                    "batch_size": 1
+                }
+            },
+            "fed_test_config": {
+                "net_config": {
+                    "h0_seed": seed,
+                    "loc_count": user_loc_counts["all_clients"][city]["loc_count"],
+                    "user_count": 1
+                },
+                "dataloader_config": {
+                    "loc_count": user_loc_counts["all_clients"][city]["loc_count"],
+                    "batch_size": 1
+                },
+                "run_config": {
+                    "batch_size": 1
+                }
+            },
+            "net_config_initial_parameters": {
+                "h0_seed": seed,
+                "loc_count": user_loc_counts["all_clients"][city]["loc_count"],
+                "user_count": 1
+            }
+        },
+        "fed": {
+            "num_rounds": 20,
+            "num_total_clients": 1,
+            "num_clients_per_round": 1,
+            "num_evaluate_clients_per_round": 1
+        }
+    }
+
 IS_FEDERATED_TO_LABEL = {
     True: "federated",
     False: "centralised"
 }
-
 
 CITY_TO_LABEL = {
     "CAL": "cal",
@@ -120,6 +195,10 @@ SEEDS = (42, 361, 1337)
 
 if __name__ == "__main__":
     YAMLS_DIR = Path("project") / "conf" / "task" / "flashback"
+    YAMLS_DIR_NONFEDERATED = Path("project") / "conf" / "task" / "flashback-nonfederated"
+
+    YAMLS_DIR.mkdir(parents=True, exist_ok=True)
+    YAMLS_DIR_NONFEDERATED.mkdir(parents=True, exist_ok=True)
 
     user_loc_counts = {}
     for heterogeneity in HETEROGENEITY_TO_LABEL:
@@ -161,3 +240,17 @@ if __name__ == "__main__":
                             ))
                             f.write(OmegaConf.to_yaml(yaml_dict))
                         log(logging.INFO, f"Wrote to {yaml_path}")
+
+    # For single client training (non-federated setup)
+    for city, c_label in CITY_TO_LABEL.items():
+        for seed in SEEDS:
+            for user_id in range(user_loc_counts["all_clients"][city]["user_count"]):
+                yaml_dict = generate_conf_nonfederated(city, user_id, seed, user_loc_counts)
+                yaml_path = YAMLS_DIR_NONFEDERATED / f"nonfederated-{c_label}{user_id}-s{seed}.yaml"
+                with yaml_path.open("w") as f:
+                    f.writelines((
+                        "# @package _global_\n",
+                        "---\n"
+                    ))
+                    f.write(OmegaConf.to_yaml(yaml_dict))
+                log(logging.INFO, f"Wrote to {yaml_path}")
