@@ -44,6 +44,7 @@ class TrainConfig(BaseModel):
     weight_decay: float
     loc_count: int
     client_dropout_probability: float
+    server_round: int
 
     class Config:
         """Setting to allow any types, including library ones like torch.device."""
@@ -106,6 +107,8 @@ def train(  # pylint: disable=too-many-arguments
     scheduler = torch.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=[20, 40, 60, 80], gamma=0.2
     )
+    for _ in range((config.server_round - 1) * config.epochs):
+        scheduler.step()
 
     with logging_redirect_tqdm():
         for e in tqdm(range(config.epochs), desc="Epoch"):

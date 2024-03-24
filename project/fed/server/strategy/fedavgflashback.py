@@ -4,12 +4,13 @@ between the federation's clients and server.
 """
 
 import logging
-from typing import cast
+from typing import Dict, List, Optional, Tuple, Union, cast
 
 import flwr
 import numpy as np
 from flwr.common import (
     EvaluateIns,
+    EvaluateRes,
     FitIns,
     FitRes,
     Parameters,
@@ -77,7 +78,7 @@ class FedAvgFlashback(flwr.server.strategy.FedAvg):
             ))
         log(
             logging.WARNING,
-            f"configure_fit(): Providing truncated models for {[client.cid for client in clients]}",
+            f"configure_fit(): Providing truncated models for {[client.cid for client in clients]} with config={config}",
         )
         return client_config_pairs
         # return [(client, fit_ins) for client in clients]
@@ -150,7 +151,7 @@ class FedAvgFlashback(flwr.server.strategy.FedAvg):
 
         log(
             logging.WARNING,
-            f"aggregate_fit(): Combining models from {[client.cid for client, _ in results]}",
+            f"aggregate_fit(): Combining models from {[client.cid for client, _ in results]}, metrics_aggregated={metrics_aggregated}",
         )
         return parameters_aggregated_result, metrics_aggregated
 
@@ -208,3 +209,16 @@ class FedAvgFlashback(flwr.server.strategy.FedAvg):
             f"configure_evaluate(): Providing truncated models for {[client.cid for client in clients]}",
         )
         return client_config_pairs
+
+    def aggregate_evaluate(
+        self,
+        server_round: int,
+        results: List[Tuple[ClientProxy, EvaluateRes]],
+        failures: List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]],
+    ) -> Tuple[Optional[float], Dict[str, Scalar]]:
+        loss_aggregated, metrics_aggregated = super().aggregate_evaluate(server_round, results, failures)
+        log(
+            logging.WARNING,
+            f"aggregate_evaluate(): loss_aggregated={loss_aggregated}, metrics_aggregated={metrics_aggregated}",
+        )
+        return loss_aggregated, metrics_aggregated

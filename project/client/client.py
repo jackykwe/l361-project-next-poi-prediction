@@ -138,6 +138,7 @@ class Client(fl.client.NumPyClient):
             config.dataloader_config,
             self.rng_tuple,
         )
+        config.run_config["server_round"] = config.extra["server_round"]
         num_samples, metrics = self.train(
             self.net,
             trainloader,
