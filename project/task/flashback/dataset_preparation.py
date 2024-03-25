@@ -573,7 +573,7 @@ def _print_statistics(postprocessed_partitions_root: Path) -> None:
             user_count = len(df.loc[:, 0].unique())
             loc_count = len(df.loc[:, 4].unique())
             log(
-                logging.INFO, f"[{heterogeneity}] city={city}: user_count={user_count}, loc_count={loc_count}"
+                logging.INFO, f"[{heterogeneity}] city={city}: check_ins={len(df)}, user_count={user_count}, loc_count={loc_count}"
             )
 
 
@@ -684,18 +684,18 @@ def download_and_preprocess(cfg: DictConfig) -> None:
     [2024-03-23 05:41:08,329][flwr][INFO] -     18517/308136 checkins remain (6.01%)
     [2024-03-23 05:41:08,329][flwr][INFO] -     130/4638 users remain (2.80%)
     Preprocessing (homogeneous_approximation): 100%|████████████████████████████████████████████████████████████| 4/4 [00:20<00:00,  5.15s/it]
-    [2024-03-23 05:43:13,105][flwr][INFO] - [all_clients] city=CAL: user_count=27, loc_count=472
-    [2024-03-23 05:43:13,300][flwr][INFO] - [all_clients] city=NY: user_count=1060, loc_count=16015
-    [2024-03-23 05:43:13,339][flwr][INFO] - [all_clients] city=PHO: user_count=92, loc_count=1479
-    [2024-03-23 05:43:13,500][flwr][INFO] - [all_clients] city=SIN: user_count=866, loc_count=8694
-    [2024-03-23 05:43:13,525][flwr][INFO] - [smaller_quantity_skew] city=CAL: user_count=25, loc_count=444
-    [2024-03-23 05:43:13,896][flwr][INFO] - [smaller_quantity_skew] city=NY: user_count=992, loc_count=14925
-    [2024-03-23 05:43:13,948][flwr][INFO] - [smaller_quantity_skew] city=PHO: user_count=86, loc_count=1360
-    [2024-03-23 05:43:14,095][flwr][INFO] - [smaller_quantity_skew] city=SIN: user_count=797, loc_count=7930
-    [2024-03-23 05:43:14,101][flwr][INFO] - [homogeneous_approximation] city=CAL: user_count=5, loc_count=138
-    [2024-03-23 05:43:14,124][flwr][INFO] - [homogeneous_approximation] city=NY: user_count=159, loc_count=5995
-    [2024-03-23 05:43:14,129][flwr][INFO] - [homogeneous_approximation] city=PHO: user_count=14, loc_count=406
-    [2024-03-23 05:43:14,147][flwr][INFO] - [homogeneous_approximation] city=SIN: user_count=130, loc_count=3215
+    [2024-03-23 05:43:13,105][flwr][INFO] - [all_clients] city=CAL: check_ins=5742, user_count=27, loc_count=472
+    [2024-03-23 05:43:13,300][flwr][INFO] - [all_clients] city=NY: check_ins=225202, user_count=1060, loc_count=16015
+    [2024-03-23 05:43:13,339][flwr][INFO] - [all_clients] city=PHO: check_ins=17723, user_count=92, loc_count=1479
+    [2024-03-23 05:43:13,500][flwr][INFO] - [all_clients] city=SIN: check_ins=187093, user_count=866, loc_count=8694
+    [2024-03-23 05:43:13,525][flwr][INFO] - [smaller_quantity_skew] city=CAL: check_ins=4713, user_count=25, loc_count=444
+    [2024-03-23 05:43:13,896][flwr][INFO] - [smaller_quantity_skew] city=NY: check_ins=170852, user_count=992, loc_count=14925
+    [2024-03-23 05:43:13,948][flwr][INFO] - [smaller_quantity_skew] city=PHO: check_ins=14010, user_count=86, loc_count=1360
+    [2024-03-23 05:43:14,095][flwr][INFO] - [smaller_quantity_skew] city=SIN: check_ins=137346, user_count=797, loc_count=7930
+    [2024-03-23 05:43:14,101][flwr][INFO] - [homogeneous_approximation] city=CAL: check_ins=822, user_count=5, loc_count=138
+    [2024-03-23 05:43:14,124][flwr][INFO] - [homogeneous_approximation] city=NY: check_ins=22131, user_count=159, loc_count=5995
+    [2024-03-23 05:43:14,129][flwr][INFO] - [homogeneous_approximation] city=PHO: check_ins=1968, user_count=14, loc_count=406
+    [2024-03-23 05:43:14,147][flwr][INFO] - [homogeneous_approximation] city=SIN: check_ins=18517, user_count=130, loc_count=3215
     """
 
 

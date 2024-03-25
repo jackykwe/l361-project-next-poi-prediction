@@ -161,7 +161,8 @@ def generate_conf_nonfederated(
             "num_rounds": 20,
             "num_total_clients": 1,
             "num_clients_per_round": 1,
-            "num_evaluate_clients_per_round": 1
+            "num_evaluate_clients_per_round": 1,
+            "seed": seed
         }
     }
 
