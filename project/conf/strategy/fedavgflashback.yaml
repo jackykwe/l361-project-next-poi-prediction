@@ -1,0 +1,5 @@
+---
+name: FedAvgFlashback
+
+init:
+  _target_: project.fed.server.strategy.fedavgflashback.FedAvgFlashback

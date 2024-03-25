@@ -1,0 +1,100 @@
+---
+# These strings are constants used by the dispatcher to select functionality at runtime
+# Please implement all behaviour in the task-level dispatch.py file and then add the dispatch functions to the top-level dispatch.py
+# Choose the model and dataset
+model_and_data: Flashback_MCMG
+# Choose the train, test and server fed_eval functions
+train_structure: Flashback
+
+# Where to load data from for fit_config and eval_config: data/flashback/partition/<heterogeneity>/<city>/<partition_type>
+# Where to load data from for fed_test_config: data/flashback/partition/<heterogeneity>/<city>/centralised
+dispatch_data:
+  heterogeneity: all_clients
+  city: CAL # one of ["CAL", "NY", "PHO", "SIN"]
+  partition_type: centralised # either "centralised" or "fed_natural"
+
+# Client fit config
+fit_config:
+  # Net requires configuration!
+  net_config:
+    h0_seed: 1337
+    loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
+    user_count: 27 #! DATASET/CITY (NOT .TXT) dependent.
+    hidden_dim: 10
+    lambda_t: 0.1
+    lambda_s: 100
+    debug_origin: task.fit_config.net_config
+  # Dataloader requires batch_size
+  dataloader_config:
+    loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
+    batch_size: 16 #! set to biggest power of two smaller than user_count
+    sequence_length: 20
+    debug_origin: task.fit.dataloader_config
+  # The train function requires epochs and learning_rate
+  run_config:
+    epochs: 5 # also equal to validate_epoch: we test once the number of epochs in a single round has ended.
+    learning_rate: 0.01
+    weight_decay: 0.0
+    loc_count: 472 #! Interpolations do not work... ${..net_config.loc_count}
+    batch_size: 16 #! Interpolations do not work... ${..dataloader_config.batch_size}
+    client_dropout_probability: 0.0
+  # No extra config
+  extra: {}
+
+# Client eval config
+eval_config:
+  net_config: #! Identical to fit_config, this is evaluation on the client
+    h0_seed: 1337
+    loc_count: 472 #! Identical to fit_config, this is evaluation on the client
+    user_count: 16 #! Identical to fit_config, this is evaluation on the client
+    hidden_dim: 10 #! Identical to fit_config, this is evaluation on the client
+    lambda_t: 0.1 #! Identical to fit_config, this is evaluation on the client
+    lambda_s: 100 #! Identical to fit_config, this is evaluation on the client
+    debug_origin: task.eval_config.net_config
+  # The testing function batch size can be as high as the GPU supports
+  dataloader_config: #! Identical to fit_config, this is evaluation on the client
+    loc_count: 472 #! Identical to fit_config, this is evaluation on the client
+    batch_size: 16 #! Identical to fit_config, this is evaluation on the client
+    sequence_length: 20 #! Identical to fit_config, this is evaluation on the client
+    debug_origin: task.eval_config.dataloader_config
+  # Unlike train, the mnist train function takes no parameters
+  run_config:
+    batch_size: 16 #! Interpolations do not work... ${..dataloader_config.batch_size}
+  extra: {}
+
+# Configuration for the federated testing function
+# Follows the same conventions as the client config
+fed_test_config:
+  net_config:
+    h0_seed: 1337
+    loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
+    user_count: 27 #! DATASET/CITY (NOT .TXT) dependent.
+    hidden_dim: 10
+    lambda_t: 0.1
+    lambda_s: 100
+    debug_origin: task.fed_test_config.net_config
+  # The testing function batch size can be as high as the GPU supports
+  dataloader_config:
+    loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
+    batch_size: 16 #! DATASET/CITY (NOT .TXT) dependent.
+    sequence_length: 20
+    debug_origin: task.fed_test_config.dataloader_config
+  # Unlike train, the mnist train function takes no parameters
+  run_config:
+    batch_size: 16
+  extra: {}
+
+# Configuration instructions for initial parameter
+# generation
+net_config_initial_parameters:
+  h0_seed: 1337
+  loc_count: 472 #! DATASET/CITY (NOT .TXT) dependent.
+  user_count: 27 #! DATASET/CITY (NOT .TXT) dependent.
+  hidden_dim: 10
+  lambda_t: 0.1
+  lambda_s: 100
+  debug_origin: task.net_config_initial_parameters
+
+# The names of metrics you wish to aggregate
+fit_metrics: [train_loss]
+evaluate_metrics: [recall@1, recall@5, recall@10, MAP]

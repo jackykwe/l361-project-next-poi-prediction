@@ -1,0 +1,23 @@
+---
+#! NB. Everything here concerns downloading and partitioning the four datasets (cities) only.
+#! NB. For selection of dataset (city), modify the yaml under the task folder.
+# Where to download and store raw data (all four cities will be downloaded)
+raw_dataset_dir: ./data/flashback/raw_data
+
+# Where to save postprocessed raw data to.
+# Directory structure looks like
+#    postprocessed_partitions_root / chosen_city / partition_type / client_x.txt
+# where chosen_city in ("CAL", "NY", "PHO", "SIN")
+#   and partition_type in ("centralised", "fed_natural")
+#
+# Train and test splits are created at runtime, not stored statically
+# to reuse as much of Flashback's code as possible.
+postprocessed_partitions_root: ./data/flashback/partition
+
+# Sequence length; k in the Flashback paper
+# This is the maximum length of the input to the model
+# I.e. the maximum number of historical checkins we look at, when we predict the next checkin
+sequence_length: 20
+
+# Where all the partitions are stored. Selection of subfolders is done using yaml in task (city and partition_type fields)
+partition_dir: ./data/flashback/partition

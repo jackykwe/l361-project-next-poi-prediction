@@ -8,28 +8,28 @@ import logging
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from typing import cast
-import uuid
 
 import flwr as fl
 import hydra
-import wandb
-from wandb.sdk.wandb_run import Run
 from flwr.common.logger import log
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
+from wandb.sdk.wandb_run import Run
 
+import wandb
 from project.client.client import get_client_generator
 from project.dispatch.dispatch import dispatch_config, dispatch_data, dispatch_train
 from project.fed.server.deterministic_client_manager import DeterministicClientManager
 from project.fed.server.wandb_server import WandbServer
 from project.fed.utils.utils import (
     get_save_history_to_file,
-    get_state,
     get_save_parameters_to_file,
     get_save_rng_to_file,
+    get_state,
     get_weighted_avg_metrics_agg_fn,
     test_client,
 )
@@ -302,15 +302,22 @@ def main(cfg: DictConfig) -> None:
 
             # Runs fit and eval on either one client or all of them
             # Avoids launching ray for debugging purposes
-            test_client(
-                test_all_clients=cfg.debug_clients.all,
-                test_one_client=cfg.debug_clients.one,
-                client_generator=client_generator,
-                initial_parameters=initial_parameters,
-                total_clients=cfg.fed.num_total_clients,
-                on_fit_config_fn=on_fit_config_fn,
-                on_evaluate_config_fn=on_evaluate_config_fn,
-            )
+            # * Interferes with FedAvgFlashback; ignore if it's FedAvgFlashback
+            # * Furthermore, if the dataset is huge, this is wasted work.
+            if (
+                cfg.strategy.name != "FedAvgFlashback"
+                and cfg.task.train_structure != "Flashback"
+            ):
+                log(logging.WARNING, "test_client() is running...")
+                test_client(
+                    test_all_clients=cfg.debug_clients.all,
+                    test_one_client=cfg.debug_clients.one,
+                    client_generator=client_generator,
+                    initial_parameters=initial_parameters,
+                    total_clients=cfg.fed.num_total_clients,
+                    on_fit_config_fn=on_fit_config_fn,
+                    on_evaluate_config_fn=on_evaluate_config_fn,
+                )
 
             # Start Simulation
             # The ray_init_args are only necessary
