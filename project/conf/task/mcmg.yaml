@@ -35,6 +35,7 @@ fit_config:
   dataloader_config:
     batch_size: 1
     POI_n_node: 580
+    filter: False
 
   # Default train does nothing
   run_config: { }
@@ -67,6 +68,7 @@ eval_config:
   dataloader_config:
     batch_size: 1
     POI_n_node: 580
+    filter: False
   run_config: { }
   extra: { }
 
@@ -128,4 +130,4 @@ net_config_initial_parameters:
 # The names of metrics you wish to aggregate
 # E.g., train_loss, test_accuracy
 fit_metrics: [ train_loss ]
-evaluate_metrics: [ ]
+evaluate_metrics: [ POI_HR_1, POI_NDCG_1, POI_HR_5, POI_NDCG_5 ]

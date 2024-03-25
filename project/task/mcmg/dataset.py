@@ -2,6 +2,7 @@
 import pickle
 import numpy as np
 from itertools import compress
+from scipy import stats as st
 
 from project.task.default.dataset import (
     ClientDataloaderConfig as DefaultClientDataloaderConfig,
@@ -74,7 +75,7 @@ def get_dataloader_generators(
             full_test = pickle.load(f)
 
         if _config['filter']:
-            full_train, full_test = filter_data(full_train, full_test)
+            full_train, full_test = filter_data_heterogeneous(full_train, full_test)
 
         train_data = increase_data(flatten_data(full_train))
         POI_adj_matrix = get_adj_matrix_InDegree(train_data[0], _config['POI_n_node'])
@@ -226,14 +227,33 @@ class McmgTestDataLoader:
         self.regi_dist_test_data = regi_dist_test_data
 
 
-def filter_data(full_train, full_test):
+def filter_data_heterogeneous(full_train, full_test):
     client_lens = [len(i) for i in full_train[0]]
     mean_client_len = np.mean(client_lens)
+    std_client_len = np.std(client_lens)
 
     filtered_train = list()
     filtered_test = list()
 
-    mask = client_lens >= mean_client_len
+    mask1 = client_lens >= mean_client_len + std_client_len
+    mask2 = client_lens <= mean_client_len - std_client_len
+    mask = mask1 | mask2
+
+    for i in range(0, len(full_train)):
+        filtered_train.append(list(compress(full_train[i], mask)))
+        filtered_test.append(list(compress(full_test[i], mask)))
+
+    return filtered_train, filtered_test
+
+
+def filter_data_homogeneous(full_train, full_test):
+    client_lens = [len(i) for i in full_train[0]]
+    mode = st.mode(client_lens).mode
+
+    filtered_train = list()
+    filtered_test = list()
+
+    mask = client_lens == mode
 
     for i in range(0, len(full_train)):
         filtered_train.append(list(compress(full_train[i], mask)))
