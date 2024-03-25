@@ -100,6 +100,7 @@ fed_test_config:
   dataloader_config:
     batch_size: 1
     POI_n_node: 580
+    filter: False
   run_config: { }
   extra: { }
 
